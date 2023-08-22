@@ -1,0 +1,271 @@
+---
+title: "QBS 103 Final Project V3"
+author: "Elizabeth Chin"
+date: "2023-08-16"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r,include=TRUE}
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+```
+
+```{r}
+#adapted from class
+Table <- function(data,varList,nonnormVars = '',catVars = '') {
+  
+  # Define an empty table
+  table1 <- matrix(nrow = 0,ncol = 2)
+  # Keep track of rows to indent
+  indentRows <- c()
+  
+  # Loop through all variables
+  for (var in varList) {
+    
+    # Define vector of variable values
+    x <- data[,var]
+    
+    # Identify if non-normal
+    if (var %in% nonnormVars) {
+      
+      # Calculate individual values
+      myMedian <- round(median(x), digits = 2)
+      myIQR1 <- round(quantile(x,1/4),digits = 2)
+      myIQR2 <- round(quantile(x,3/4),digits = 2)
+      # Combine values
+      value <- paste0(myMedian,' [',myIQR1,', ',myIQR2,']')
+      
+      # Define new row
+      newRow <- c(paste0('**',var,'** Median [IQR]'),value)
+      
+      # Add row to data frame
+      table1 <- rbind(table1,newRow)
+      
+    }
+    
+    # Identify if categorical
+    if (var %in% catVars) {
+      
+      # Define new row for overall variable
+      newRow <- c(paste0('**',var,'** n (%)'),'')
+      # Add row to data frame
+      table1 <- rbind(table1,newRow)
+      
+      # Loop through levels of variable
+      for (level in levels(x)) {
+        # Calculate n and perc
+        n <- sum(x == level)
+        perc <- round(n/(length(x)) * 100,digits = 2)
+        
+        # Combine values
+        value <- paste0(n,' (',perc,')')
+        
+        # Define new row
+        newRow <- c(level,value)
+        # Add row to data frame
+        table1 <- rbind(table1,newRow)
+        # Add index to indented rows
+        indentRows <- c(indentRows,nrow(table1))
+        
+        
+      }
+    }
+    
+    # Otherwise treat as normally distributed
+    if (!(var %in% c(nonnormVars,catVars))) {
+      
+      # Calculate individual values
+      myMean <- round(mean(x),2)
+      mySD <- round(sd(x),2)
+      # Combine values
+      value <- paste0(myMean,' (',mySD,')')
+      
+      # Define new row
+      newRow <- c(paste0('**',var,'** Mean (sd)'),value)
+      
+      # Add row to data frame
+      table1 <- rbind(table1,newRow)
+      
+    }
+  }
+  
+  # Define sample size for heading
+  sampleSize <- paste("n =",nrow(data))
+  
+   # Print formatted table
+   kable(x = table1, caption = 'Table 1',
+        col.names = c("Variable",sampleSize),
+        align = c('l','r'),escape = T,row.names = F) %>%
+    add_indent(positions = indentRows) %>%
+    kable_classic()
+  
+  #return(table1)
+    
+}
+
+```
+
+```{r}
+#set working directory
+setwd("/Users/li_li/desktop/QBS_103_Final_Project/Data")
+
+#read in csv files
+gene.exp <- read.csv("QBS103_finalProject_geneExpression.csv", row.names = 1)
+
+meta.data <- read.csv("QBS103_finalProject_metadata.csv", row.names = 1)
+
+#subset gene expression ABCA1, ABCA2, ABCA3
+gene.ABCA123 <- gene.exp[c('ABCA1','ABCA2','ABCA3'),]
+
+#transform rows to columns 
+gene.ABCA123 <- as.data.frame(t(gene.ABCA123))
+meta.data <- read.csv("QBS103_finalProject_metadata.csv", row.names = 1)
+
+ABCA123.gene.exp.meta <- cbind(gene.ABCA123,meta.data)
+head(ABCA123.gene.exp.meta, 1)
+
+#create a new data frame to filter the unknown in sex
+library(tidyverse)
+clean_data <- ABCA123.gene.exp.meta %>% 
+  filter(!grepl('unknown', sex)) 
+```
+
+
+```{r}
+clean_data$age <- as.integer(clean_data$age) 
+clean_data$ferritin.ng.ml. <- as.integer(clean_data$ferritin.ng.ml.) 
+clean_data$procalcitonin.ng.ml.. <- as.integer(clean_data$procalcitonin.ng.ml..) 
+```
+
+
+```{r}
+clean_data <- clean_data %>% filter(!is.na(age))
+clean_data <- clean_data %>% filter(!is.na(ferritin.ng.ml.))
+clean_data <- clean_data %>% filter(!is.na(procalcitonin.ng.ml..))
+clean_data <- clean_data %>% filter(!grepl('unknown', sex)) 
+```
+
+
+```{r}
+clean_data$sex <- as.factor(clean_data$sex)
+clean_data$mechanical_ventilation <- as.factor(clean_data$mechanical_ventilation)
+clean_data$icu_status <- as.factor(clean_data$icu_status)
+```
+
+
+```{r}
+variable_list <- c("icu_status", "mechanical_ventilation", "sex", "age", "ferritin.ng.ml.",
+                   "procalcitonin.ng.ml..", "ABCA1")             #"ABCA2", "ABCA3")
+cont_var_list <- c("ABCA1")                                      #"ABCA2", "ABCA3")
+cat_car_list <- c("icu_status", "sex", "mechanical_ventilation")
+
+```
+
+```{r}
+Table(clean_data, variable_list, cont_var_list, cat_car_list) 
+```
+
+
+```{r}
+Table1 <- Table(clean_data, variable_list, cont_var_list, cat_car_list) 
+
+write.csv(Table1, file = "Table1.csv")
+```
+
+
+```{r}
+#subset gene expression ABCA1, ABCA2, ABCA3, ABCA4, ABCA5, ABCA6, ABCA7, ABCA8, ABCA9, ABCB1
+ten_gene <- gene.exp[c('ABCA1','ABCA2','ABCA3', 'ABCA4', 'ABCA5', 'ABCA6', 'ABCA7', 'ABCA8', 'ABCA9', 'ABCB1'),]
+
+#transform rows to columns 
+ten_gene <- as.data.frame(t(ten_gene))
+head(ten_gene)
+```
+
+```{r}
+#column bind two data frames
+ten_gene.exp.meta <- cbind(ten_gene,meta.data)
+head(ten_gene.exp.meta, 1)
+```
+
+
+```{r}
+#ten_gene_df <- ten_gene.exp.meta[ -c(11:20, 23:34) ]
+#ten_gene_df
+```
+
+
+```{r}
+library(RColorBrewer)
+library(pheatmap)
+scaled <- scale(ten_gene)
+ten_gene.exp.meta <- ten_gene.exp.meta %>% filter(!grepl('unknown', sex))
+
+ten_gene.exp.meta$sex <- as.factor(ten_gene.exp.meta$sex)
+ten_gene.exp.meta$icu_status <- as.factor(ten_gene.exp.meta$icu_status)
+
+brewercolors <- brewer.pal(8, "Pastel2")
+
+
+set.seed(9876)
+
+
+annotationData <- data.frame(row.names = rownames(ten_gene.exp.meta),
+                             "ICU" = ten_gene.exp.meta$icu_status,
+                             "Sex" = ten_gene.exp.meta$sex
+                             )
+
+
+annotationColors <- list("ICU" = c(' no' = 'firebrick',
+                                        ' yes' = 'royalblue3'),
+                         "Sex" = c(' female' = 'gold',
+                                 ' male' = 'magenta4'))
+
+pheatmap(
+  scaled,
+  cluster_rows = TRUE,
+  cluster_cols = TRUE,
+  show_rownames = FALSE,
+  fontsize = 8,
+  main = "Heat Map of Ten Genes",
+  annotation_row = annotationData,
+  annotation_colors = annotationColors,
+  color = brewercolors
+  
+)
+```
+
+
+```{r}
+#new graph in r 
+
+#creating 2d-density plot
+density_plt_data <- data.frame(
+  X = clean_data$age,
+  Y = clean_data$ABCA1
+)
+
+
+#create italicize labels
+y2 <- expression(paste("Gene Expression ", italic("ABCA1")))
+title2 <- expression(paste("2D Density Plot of Gene Expression ", italic("ABCA1"), " By Age"))
+
+
+#plot graph
+ggplot(density_plt_data, aes(x=X, y=Y)) +
+  geom_density_2d_filled() + 
+  labs(x="Age", y=y2, title = title2) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme_minimal()
+
+
+
+
+```
+
+
+
+

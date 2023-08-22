@@ -1,0 +1,165 @@
+---
+title: "QBS 103 Final Project V1"
+author: "Elizabeth Chin"
+date: "2023-07-23"
+output: pdf_document
+---
+
+## Gene: ABCA1
+
+# This gene encodes a protein located in the cell membrane, and it belongs to a group of proteins called ATP-binding cassette (ABC) transporters. These proteins are responsible for moving various molecules in and out of cells. There are seven different subgroups of ABC genes, and this particular protein belongs to the ABC1 subgroup, which is unique to multicellular organisms. This protein plays a role in removing cholesterol from cells by acting as a pump to push cholesterol out of the cell. When both copies of this gene have mutations, it leads to conditions known as Tangier disease and familial high-density lipoprotein (HDL) deficiency, affecting how cholesterol is processed in the body.
+
+## Continuous Covariate: Age
+
+## Categorical Covariate: Sex & ICU Status
+
+```{r}
+#set working directory
+setwd("/Users/li_li/desktop/QBS_103_Final_Project/Data")
+
+#read in csv files
+gene.exp <- read.csv("QBS103_finalProject_geneExpression.csv", row.names = 1)
+
+meta.data <- read.csv("QBS103_finalProject_metadata.csv", row.names = 1)
+```
+
+```{r}
+#subset gene expression ABCA1
+gene.ABCA1 <- gene.exp['ABCA1', ]
+
+#transform rows to columns 
+gene.ABCA1 <- as.data.frame(t(gene.ABCA1))
+head(gene.ABCA1)
+```
+
+```{r}
+#column bind two data frames
+ABCA1.gene.exp.meta <- cbind(gene.ABCA1,meta.data)
+head(ABCA1.gene.exp.meta, 1)
+```
+
+```{r}
+#convert age to an integer
+ABCA1.gene.exp.meta$age <- as.integer(ABCA1.gene.exp.meta$age) 
+head(ABCA1.gene.exp.meta, 1)
+```
+
+```{r}
+#calculate median for histogram to determine the geom_vline
+median_ABCA1 <- median(ABCA1.gene.exp.meta$ABCA1)
+max_ABCA1 <- max(ABCA1.gene.exp.meta$ABCA1)
+```
+
+```{r}
+#creating histogram for gene expression
+
+#load the required package
+library(ggplot2)
+library(ggpubr)
+
+#define color palette
+my_palette1 <- c("#A2CFFE") # Choose any colors you like
+
+#create italicize labels
+my_x1 <- expression(paste("Gene Expression ", italic("ABCA1")))
+my_title1 <- expression(paste("Frequency of People With Gene Expression ", italic("ABCA1")))
+
+#create theme
+newBlankTheme <- theme(# Remove all the extra borders and grid lines
+        panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        # Define my axis
+        axis.line = element_line(colour = "black", linewidth = rel(1)),
+        # Set plot background
+        plot.background = element_rect(fill = "white"),
+        panel.background = element_blank(),
+        legend.key = element_rect(fill = 'white'), 
+        # Move legend
+        legend.position = 'top')
+
+#create histogram
+ggplot(ABCA1.gene.exp.meta, aes(x=ABCA1.gene.exp.meta$ABCA1)) + 
+  geom_histogram(binwidth = 2, fill = my_palette1, col="black") + 
+  stat_bin(binwidth=2, geom='text', color='white', aes(label=..count..),
+           position=position_stack(vjust = 0.5)) +
+  geom_vline(xintercept = median(ABCA1.gene.exp.meta$ABCA1), size = 1, color="red") +
+  annotate("text", x=median_ABCA1*1.8, y=0.5*max_ABCA1, label=paste("Median = ", median_ABCA1), color=("black")) +
+  labs(x = my_x1,y = 'Frequency of People', title = my_title1) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  newBlankTheme 
+
+
+
+
+```
+
+```{r}
+#create scatterplot for gene expression and age 
+
+#define color palette
+my_palette2 <- c("#D697C1") # Choose any colors you like
+
+#create italicize labels
+my_y2 <- expression(paste("Gene Expression ", italic("ABCA1")))
+my_title2 <- expression(paste("Gene Expression ", italic("ABCA1"), " By Age"))
+
+#create scatterplot
+ggplot(ABCA1.gene.exp.meta,aes(x=ABCA1.gene.exp.meta$age,y=ABCA1.gene.exp.meta$ABCA1)) + 
+  geom_point(color=my_palette2) + 
+  stat_smooth(method = "lm", formula = y ~ x, geom = "smooth") +
+  stat_cor(method = "pearson", label.x = 20) +
+  labs(x = "Age", y = my_y2, title = my_title2) + 
+  theme(plot.title = element_text(hjust = 0.5)) +
+  newBlankTheme
+```
+
+```{r}
+#calculating correlation for scatter plot
+cor.test(ABCA1.gene.exp.meta$age,ABCA1.gene.exp.meta$ABCA1)
+```
+
+```{r}
+#create boxplot for gene expression separated by sex and icu status
+
+#load the required package
+library(dplyr)
+
+#define color palette
+my_palette3 <- c("#FFEEC4","#B1E3C7") # Choose any colors you like
+
+
+#create a new data frame to filter the unknown in sex
+filtered_sex <- ABCA1.gene.exp.meta %>% 
+  filter(!grepl('unknown', sex)) 
+
+#create italicize labels
+my_y3 <- expression(paste("Gene Expression ", italic("ABCA1")))
+my_title3 <- expression(paste("Gene Expression ", italic("ABCA1"), " By Sex & ICU Status"))
+
+#plot new data frame to create box plot
+ggplot(filtered_sex, aes(x=filtered_sex$sex, y=filtered_sex$ABCA1, fill=filtered_sex$icu_status)) +
+  theme(legend.title = element_blank()) +
+  geom_boxplot() +
+  scale_x_discrete(labels = c('Female','Male')) +
+  scale_fill_manual(values = my_palette3, labels = c("Not Admitted to ICU", "Admitted to ICU")) +
+  labs(x = "Sex",
+       y = my_y3,
+       fill = "ICU Status",
+       title = my_title3) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  newBlankTheme
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
